@@ -192,7 +192,7 @@ Trois workflows GitHub Actions sont configurés :
 
 ## Déploiement GitOps (ArgoCD)
 
-Le déploiement sur **SSP Cloud** est entièrement géré via une approche GitOps dans un dépôt dédié : [`analyse-oel_deployment`](https://git.lab.sspcloud.fr/colaslepoutre/analyse-oel_deployment).
+Le déploiement sur **SSP Cloud** est entièrement géré via une approche GitOps dans un dépôt dédié : [`analyse-oel_deployment`](https://github.com/Colas-Lepoutre/Analyse-OEL_deployment).
 
 ### Principe
 
