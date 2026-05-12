@@ -147,9 +147,9 @@ docker build \
   --build-arg S3_PATH=$S3_PATH \
   --build-arg AWS_S3_ENDPOINT=$AWS_S3_ENDPOINT \
   --build-args BACKEND_API_URL=$BACKEND_API_URL \
-  -f app/Dockerfile -t analyse-oel_back .
+  -f app/Dockerfile -t analyse-oel .
 
-docker run -e API_KEY=$API_KEY -p 8000:8000 analyse-oel_back
+docker run -e API_KEY=$API_KEY -p 8000:8000 analyse-oel
 ```
 
 ### Frontend
@@ -207,7 +207,7 @@ Push code          Build image Docker          Mise à jour manifeste
 
 | Application | Composant | Image Docker | Namespace |
 |---|---|---|---|
-| `backend` | API FastAPI — port `8000` | `username/analyse-oel_back` | `user-username` |
+| `backend` | API FastAPI — port `8000` | `username/analyse-oel` | `user-username` |
 | `frontend` | Streamlit — port `8501` | `username/analyse-oel_front` | `user-username` |
 
 ### Secrets Kubernetes requis
