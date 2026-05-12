@@ -1,9 +1,9 @@
-# JobLess — Job Offer Breakdown with LLM Extraction & Skills Sorting
+# Analyse-OEL : API et Frontend pour l'analyse de compétences dans les offres d'emploi en ligne
 
-> **Mise en production d'un projet de Data Science** — INSEE / SSP Cloud
+> INSEE 
 
-[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-blue?logo=github)](https://anhlinhpiketty.github.io/Mise_en_production_DS/)
-[![Application](https://img.shields.io/badge/App-jobless--website.lab.sspcloud.fr-green)](https://jobless-website.lab.sspcloud.fr/)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-blue?logo=github)]()
+[![Application](https://img.shields.io/badge/App-analyse--oel.lab.sspcloud.fr-green)](https://analyse-oel.lab.sspcloud.fr/)
 [![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -11,7 +11,7 @@
 
 ## Présentation
 
-**JobLess** est un outil d'analyse automatique d'offres d'emploi. À partir du texte brut d'une offre, il extrait les compétences mentionnées et les classe selon une taxonomie à plusieurs niveaux conçue à l'INSEE — distinguant compétences numériques, soft skills, domaines sectoriels, certifications, etc.
+**Analyse-OEL** est un outil d'analyse automatique d'offres d'emploi. À partir du texte brut d'une offre, il extrait les compétences mentionnées et les classe selon une taxonomie à plusieurs niveaux conçue à l'INSEE — distinguant compétences numériques, soft skills, domaines sectoriels, certifications, etc.
 
 La pipeline combine un modèle NER fine-tuné (CamemBERTa-v2 via spaCy) pour l'extraction et des LLMs pour la classification, le tout exposé via une API FastAPI et une interface Streamlit.
 
@@ -91,8 +91,8 @@ Mise_en_production_DS/
 ### Étapes
 
 ```bash
-git clone https://github.com/anhlinhpiketty/Mise_en_production_DS.git
-cd Mise_en_production_DS
+git clone https://git.lab.sspcloud.fr/colaslepoutre/analyse-oel.git
+cd etude-num-api
 ./install.sh   # ou : uv sync
 ```
 
@@ -107,7 +107,7 @@ MODEL_NAME=gpt-oss:120b
 S3_PATH=s3://votre-bucket/chemin
 AWS_S3_ENDPOINT=minio.lab.sspcloud.fr
 TEMPERATURE=0.0
-BACKEND_API_URL=https://jobless.lab.sspcloud.fr
+BACKEND_API_URL=https://analyse-oel-api.lab.sspcloud.fr
 ```
 
 ---
@@ -147,16 +147,16 @@ docker build \
   --build-arg S3_PATH=$S3_PATH \
   --build-arg AWS_S3_ENDPOINT=$AWS_S3_ENDPOINT \
   --build-args BACKEND_API_URL=$BACKEND_API_URL \
-  -f app/Dockerfile -t jobless-back .
+  -f app/Dockerfile -t analyse-oel_back .
 
-docker run -e API_KEY=$API_KEY -p 8000:8000 jobless-back
+docker run -e API_KEY=$API_KEY -p 8000:8000 analyse-oel_back
 ```
 
 ### Frontend
 
 ```bash
-docker build -f frontend/Dockerfile -t jobless-front .
-docker run -p 8501:8501 jobless-front
+docker build -f frontend/Dockerfile -t analyse-oel_front .
+docker run -p 8501:8501 analyse-oel_front
 ```
 
 ---
@@ -184,31 +184,31 @@ Trois workflows GitHub Actions sont configurés :
 |---|---|
 | `BASE_URL` | `https://llm.lab.sspcloud.fr/api` |
 | `MODEL_NAME` | `gpt-oss:120b` |
-| `S3_PATH` | `s3://bucket/diffusion/jobless` |
+| `S3_PATH` | `s3://bucket/diffusion/analyse-oel` |
 | `AWS_S3_ENDPOINT` | `minio.lab.sspcloud.fr` |
-| `BACKEND_API_URL` | `https://jobless.lab.sspcloud.fr` |
+| `BACKEND_API_URL` | `https://analyse-oel.lab.sspcloud.fr` |
 
 ---
 
 ## Déploiement GitOps (ArgoCD)
 
-Le déploiement sur **SSP Cloud** est entièrement géré via une approche GitOps dans un dépôt dédié : [`Jobless_deployment`](https://github.com/arthurleroudier/Jobless_deployment).
+Le déploiement sur **SSP Cloud** est entièrement géré via une approche GitOps dans un dépôt dédié : [`analyse-oel_deployment`](https://git.lab.sspcloud.fr/colaslepoutre/analyse-oel_deployment).
 
 ### Principe
 
-ArgoCD surveille le dépôt `Jobless_deployment` en continu. Tout changement de manifeste Kubernetes sur `main` est automatiquement appliqué sur le cluster (`selfHeal: true`). Le dépôt est la **source de vérité** de l'état de l'infrastructure.
+ArgoCD surveille le dépôt `analyse-oel_deployment` en continu. Tout changement de manifeste Kubernetes sur `main` est automatiquement appliqué sur le cluster (`selfHeal: true`). Le dépôt est la **source de vérité** de l'état de l'infrastructure.
 
 ```
 Push code          Build image Docker          Mise à jour manifeste
-(ce repo)  ──►    (GitHub Actions)    ──►    (Jobless_deployment)   ──►   ArgoCD   ──►   K8s
+(ce repo)  ──►    (GitHub Actions)    ──►    (analyse_oel_deployment)   ──►   ArgoCD   ──►   K8s
 ```
 
 ### Applications ArgoCD
 
 | Application | Composant | Image Docker | Namespace |
 |---|---|---|---|
-| `jobless-backend` | API FastAPI — port `8000` | `arthurleroudier/jobless` | `user-aleroudier` |
-| `jobless-frontend` | Streamlit — port `8501` | `arthurleroudier/jobless_front` | `user-aleroudier` |
+| `backend` | API FastAPI — port `8000` | `username/analyse-oel_back` | `user-username` |
+| `frontend` | Streamlit — port `8501` | `username/analyse-oel_front` | `user-username` |
 
 ### Secrets Kubernetes requis
 
@@ -216,13 +216,13 @@ Push code          Build image Docker          Mise à jour manifeste
 # Clé API LLM (backend)
 kubectl create secret generic api-jeton \
   --from-literal=API_KEY='votre_clé_api_llm' \
-  -n user-aleroudier
+  -n user-username
 ```
 
 ### URL publique
 
 Le frontend est exposé via un Ingress NGINX avec TLS :
-**[https://jobless-website.lab.sspcloud.fr](https://jobless-website.lab.sspcloud.fr)**
+**[https://analyse-oel.lab.sspcloud.fr](https://analyse-oel.lab.sspcloud.fr)**
 
 ---
 
@@ -258,10 +258,9 @@ Le frontend est exposé via un Ingress NGINX avec TLS :
 
 ## Ressources
 
-- [Application en ligne](https://jobless-website.lab.sspcloud.fr/)
-- [Site de documentation](https://anhlinhpiketty.github.io/Mise_en_production_DS/)
-- [Dépôt GitOps](https://github.com/arthurleroudier/Jobless_deployment)
+- [Application en ligne](https://analyse-oel.lab.sspcloud.fr/)
+- [Site de documentation]()
+- [Dépôt GitOps](https://git.lab.sspcloud.fr/colaslepoutre/analyse-oel_deployment)
 - [Téléchargemeent des données du S3 (modèle, prompts, historique de classification)](https://minio.lab.sspcloud.fr/colaslepoutre/DonnéesS3.zip)
-
 
 
