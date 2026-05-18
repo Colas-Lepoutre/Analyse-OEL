@@ -209,17 +209,12 @@ def classify_from_history(skills: List[str]) -> List[Dict[str, Any]]:
         logger.exception("Impossible d'initialiser la connexion DuckDB")
         return [{"label": s, "categorie": None, "details": None} for s in skills]
 
-    # Normalisation locale + mapping vers le label original
-    normalized_to_original: Dict[str, str] = {
-        normalize(skill): skill for skill in skills
-    }
-    normalized_list = list(normalized_to_original.keys())
-
     try:
         # Une seule requête pour toutes les compétences
         result_df = con.execute(
             """
             SELECT
+                competence,
                 norm_label,
                 num_entree,
                 num_cat,
@@ -227,14 +222,14 @@ def classify_from_history(skills: List[str]) -> List[Dict[str, Any]]:
                 niv_cat,
                 ia_cat
             FROM classif_history
-            WHERE norm_label = ANY(?)
+            WHERE competence = ANY(?)
         """,
-            [normalized_list],
+            [skills],
         ).df()
 
         # Index des résultats par norm_label pour lookup O(1)
         found: Dict[str, Any] = {
-            row["norm_label"]: row for _, row in result_df.iterrows()
+            row["competence"]: row for _, row in result_df.iterrows()
         }
 
     except Exception:
@@ -243,12 +238,12 @@ def classify_from_history(skills: List[str]) -> List[Dict[str, Any]]:
 
     # Reconstruction de la liste de sortie dans l'ordre d'entrée
     output = []
-    for normalized, original in normalized_to_original.items():
-        if normalized not in found:
+    for original in skills:
+        if original not in found:
             output.append({"label": original, "categorie": None, "details": None})
             continue
 
-        row = found[normalized]
+        row = found[original]
         is_num = row["num_cat"] == "compétence numérique"
         details = (
             {
@@ -283,8 +278,9 @@ def _load_classif_history() -> duckdb.DuckDBPyConnection:
 
     con.sql(f"""
         CREATE TABLE classif_history AS
-        SELECT DISTINCT ON (norm.clean)
-            norm.clean AS norm_label,
+        SELECT DISTINCT ON (norm.competence)
+            norm.competence AS competence,
+            norm.competence_normalisee AS norm_label,
             num.original AS num_original,
             num.entrée AS num_entree,
             num.cat AS num_cat,
@@ -298,11 +294,11 @@ def _load_classif_history() -> duckdb.DuckDBPyConnection:
         LEFT JOIN read_csv('{HISTORY_NUM}') AS num
             ON norm.competence_normalisee = num.original
         LEFT JOIN read_csv('{HISTORY_THEME}') AS theme
-            ON num.entrée = theme.original
+            ON num.original = theme.original
         LEFT JOIN read_csv('{HISTORY_NIV}') AS niv
-            ON num.entrée = niv.original
+            ON num.original = niv.original
         LEFT JOIN read_csv('{HISTORY_IA}') AS ia
-            ON num.entrée = ia.original
+            ON num.original = ia.original
     """)
 
     # Index pour les lookups par norm_label
