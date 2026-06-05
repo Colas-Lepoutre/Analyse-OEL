@@ -39,7 +39,7 @@ jobs:
           context: .
           file: ./app/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             AWS_S3_ENDPOINT=${{ vars.AWS_S3_ENDPOINT }}
