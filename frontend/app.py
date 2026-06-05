@@ -96,8 +96,7 @@ h1, h2, h3 {
 
 /* Couleurs par catégorie */
 .tag-soft       { background: #fce7f3; color: #be185d; }
-.tag-numerique  { background: #ede9fe; color: #6d28d9; }
-.tag-non-num    { background: #d1fae5; color: #065f46; }
+.tag-tech       { background: #ede9fe; color: #6d28d9; }
 .tag-domaine    { background: #fef3c7; color: #92400e; }
 .tag-certif     { background: #dbeafe; color: #1e40af; }
 
@@ -198,8 +197,7 @@ def appeler_api(texte_offre: str):
 
 CATEGORIE_CONFIG = {
     "Soft Skill":               {"css": "tag-soft",      "emoji": "💬"},
-    "Compétence numérique":     {"css": "tag-numerique", "emoji": "💻"},
-    "Compétence non numérique": {"css": "tag-non-num",   "emoji": "🛠️"},
+    "Compétence technique":     {"css": "tag-tech", "emoji": "🛠️"},
     "Domaine / Secteur":        {"css": "tag-domaine",   "emoji": "🌐"},
     "Certification / Formation":{"css": "tag-certif",    "emoji": "🎓"},
 }
@@ -211,29 +209,49 @@ NIVEAU_CSS = {
 }
 
 def render_resultats(competences: list):
-    # Grouper par catégorie
+    # Grouper par catégorie puis par type
     groupes = {}
+
     for comp in competences:
         cat = comp["categorie"]
-        groupes.setdefault(cat, []).append(comp)
+        num = "Numérique" if comp.get("details") else "Non numérique"
+        groupes.setdefault(cat, {}).setdefault(num, []).append(comp)
 
-    for cat, comps in groupes.items():
+    for cat, sous_groupes in groupes.items():
         cfg = CATEGORIE_CONFIG.get(cat, {"css": "tag-soft", "emoji": "📌"})
         emoji = cfg["emoji"]
 
         st.markdown(f"""
         <div class="categorie-card">
-            <div class="categorie-title">{emoji} {cat} ({len(comps)})</div>
+            <div class="categorie-title">{emoji} {cat}</div>
         """, unsafe_allow_html=True)
 
-        if cat == "Compétence numérique":
-            # Affichage détaillé pour les compétences numériques
+        # 🔥 Bloc Numérique
+        if "Numérique" in sous_groupes:
+            comps = sous_groupes["Numérique"]
+
+            st.markdown("""
+            <div class="tags-container">
+                <strong>Numérique</strong>
+            </div>
+            """, unsafe_allow_html=True)
+
             for comp in comps:
                 d = comp.get("details") or {}
+
                 niveau_css = NIVEAU_CSS.get(d.get("niveau", ""), "")
-                niveau_html = f'<span class="detail-badge {niveau_css}">{d["niveau"]}</span>' if d.get("niveau") else ""
-                thema_html  = f'<span class="detail-badge">{d["thematique"]}</span>' if d.get("thematique") else ""
-                ia_html     = f'<span class="detail-badge">🤖 {d["categorie_ia"]}</span>' if d.get("categorie_ia") else ""
+                niveau_html = (
+                    f'<span class="detail-badge {niveau_css}">{d["niveau"]}</span>'
+                    if d.get("niveau") else ""
+                )
+                thema_html = (
+                    f'<span class="detail-badge">{d["thematique"]}</span>'
+                    if d.get("thematique") else ""
+                )
+                ia_html = (
+                    f'<span class="detail-badge">🤖 {d["categorie_ia"]}</span>'
+                    if d.get("categorie_ia") else ""
+                )
 
                 st.markdown(f"""
                 <div class="num-item">
@@ -241,8 +259,17 @@ def render_resultats(competences: list):
                     {thema_html}{niveau_html}{ia_html}
                 </div>
                 """, unsafe_allow_html=True)
-        else:
-            # Tags simples pour les autres catégories
+
+        # 🔥 Bloc Non numérique
+        if "Non numérique" in sous_groupes:
+            comps = sous_groupes["Non numérique"]
+
+            st.markdown("""
+            <div class="tags-container">
+                <strong>Non numérique</strong>
+            </div>
+            """, unsafe_allow_html=True)
+
             tags_html = "".join(
                 f'<span class="tag {cfg["css"]}">{c["label"]}</span>'
                 for c in comps
@@ -262,17 +289,22 @@ def afficher_resultats(resultat: dict):
 def normaliser_categorie(cat):
     if not cat:
         return None
+    
 
     cat = cat.lower()
+    
 
     mapping = {
         "soft skill": "Soft Skill",
         "compétence numérique": "Compétence numérique",
         "competence numérique": "Compétence numérique",
-        "compétence non numérique": "Compétence non numérique",
+        "compétence technique" : "Compétence technique",
+        "compétence non numérique" : "Compétence non numérique",
         "domaine - secteur": "Domaine / Secteur",
+        "formation - certification": "Certification / Formation",
         "domaine / secteur": "Domaine / Secteur",
         "certification": "Certification / Formation",
+        "erreur": "Erreur",
     }
 
     return mapping.get(cat, None)  
@@ -299,7 +331,7 @@ def nettoyer_competences(data):
 
 # INTERFACE ----------------------------------------------------------------------
 
-st.markdown('<p class="main-title">🔍 Analyse-OEL (version 2.0)</p>', unsafe_allow_html=True)
+st.markdown('<p class="main-title">🔍 Analyse-OEL (version 4.0)</p>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle"><span style="font-weight:600;">J</span>ob <span style="font-weight:600;">O</span>ffer <span style="font-weight:600;">B</span>reakdown with <span style="font-weight:600;">L</span>LM <span style="font-weight:600;">E</span>xtraction & <span style="font-weight:600;">S</span>kills <span style="font-weight:600;">S</span>orting</p>', unsafe_allow_html=True)
 
 offre = st.text_area(
@@ -330,6 +362,7 @@ if analyser:
             st.error("Impossible d'obtenir un résultat.")
         else:
             resultat_clean = nettoyer_competences(resultat)
+            print(resultat_clean)
             st.session_state["resultat"] = resultat_clean 
 
 # AFFICHAGE DES RESULTATS  ------------------------------------------------------

@@ -33,15 +33,17 @@ logger = logging.getLogger(__name__)
 
 # Chemins relatifs (à changer)
 PROMPT_NUM = S3_PATH + "/prompt_num.txt"
+PROMPT_TYPE = S3_PATH + "/prompt_type.txt"
 PROMPT_THEME = S3_PATH + "/prompt_thematique.txt"
 PROMPT_NIV = S3_PATH + "/prompt_niv.txt"
-PROMPT_IA = S3_PATH + "/prompt_class_ia.txt"
+PROMPT_IA = S3_PATH + "/prompt_ia.txt"
 
-HISTORY_NORMALIZED = S3_PATH + "/competences_jocas_2019_to_2025_normalized.csv"
-HISTORY_NUM = S3_PATH + "/num_competences_jocas_2019_to_2025.csv"
-HISTORY_THEME = S3_PATH + "/thematique_num_competences_jocas_2019_to_2025.csv"
-HISTORY_NIV = S3_PATH + "/niv_num_competences_jocas_2019_to_2025.csv"
-HISTORY_IA = S3_PATH + "/ia_num_competences_jocas_2019_to_2025.csv"
+HISTORY_NORMALIZED = S3_PATH + "/competences_jocas_2019_to_2025_normalized_v2.csv"
+HISTORY_TYPE = S3_PATH + "/type_competences_jocas_2019_to_2025_v4.csv"
+HISTORY_NUM = S3_PATH + "/num_competences_jocas_2019_to_2025_v4.csv"
+HISTORY_THEME = S3_PATH + "/thematique_num_competences_jocas_2019_to_2025_v4.csv"
+HISTORY_NIV = S3_PATH + "/niv_num_competences_jocas_2019_to_2025_v4.csv"
+HISTORY_IA = S3_PATH + "/ia_filtered_competences_jocas_2019_to_2025_v4.csv"
 
 # Variable globale pour la connexion DuckDB
 _DUCKDB_CONNECTION = None
@@ -63,8 +65,7 @@ def get_classif_history_connection() -> duckdb.DuckDBPyConnection:
 def read_txt(path: str) -> str:
     """Lit et retourne le contenu d'un fichier texte."""
     fs = s3fs.S3FileSystem(
-        client_kwargs={"endpoint_url": "https://" + os.environ["AWS_S3_ENDPOINT"]},
-        anon=True,
+        client_kwargs={"endpoint_url": "https://" + os.environ["AWS_S3_ENDPOINT"]}
     )
     with fs.open(path) as f:
         return f.read().decode("utf-8")
@@ -149,16 +150,19 @@ def classify_from_llm(skills: List[str]) -> List[Dict[str, Any]]:
     Classifie une liste de compétences via des appels LLM successifs.
     """
     prompt_num = read_txt(PROMPT_NUM)
+    prompt_type = read_txt(PROMPT_TYPE)
     prompt_theme = read_txt(PROMPT_THEME)
     prompt_niv = read_txt(PROMPT_NIV)
     prompt_ia = read_txt(PROMPT_IA)
 
     # Étape 1 — classification type de compétence
-    types = llm.call(skills, prompt_num)
+    types = llm.call(skills, prompt_type)
+
+    num = llm.call(skills, prompt_num)
 
     # Extraire les compétences numériques
     num_entries = [
-        item["entrée"] for item in types if item.get("cat") == "compétence numérique"
+        item["entrée"] for item in num if item.get("cat") == "Numérique"
     ]
 
     theme_map: Dict[str, str] = {}
@@ -178,9 +182,9 @@ def classify_from_llm(skills: List[str]) -> List[Dict[str, Any]]:
 
     output: List[Dict[str, Any]] = []
     for item in types:
-        entree = item.get("entrée", "")
+        entree = item.get("original", "")
         categorie = item.get("cat", "")
-        is_num = categorie == "compétence numérique"
+        is_num = entree in num_entries
 
         details: Optional[Dict[str, Optional[str]]] = None
         if is_num:
@@ -216,8 +220,8 @@ def classify_from_history(skills: List[str]) -> List[Dict[str, Any]]:
             SELECT
                 competence,
                 norm_label,
-                num_entree,
                 num_cat,
+                type_cat,
                 theme_cat,
                 niv_cat,
                 ia_cat
@@ -244,20 +248,20 @@ def classify_from_history(skills: List[str]) -> List[Dict[str, Any]]:
             continue
 
         row = found[original]
-        is_num = row["num_cat"] == "compétence numérique"
+        is_num = row["num_cat"] == "Numérique"
         details = (
             {
                 "thematique": row["theme_cat"],
                 "niveau": row["niv_cat"],
-                "categorie_ia": None if row["ia_cat"] == "Erreur" else row["ia_cat"],
+                "categorie_ia": row["ia_cat"],
             }
             if is_num
             else None
         )
         output.append(
             {
-                "label": row["num_entree"],
-                "categorie": row["num_cat"],
+                "label": row["norm_label"],
+                "categorie": row["type_cat"],
                 "details": details,
             }
         )
@@ -281,24 +285,27 @@ def _load_classif_history() -> duckdb.DuckDBPyConnection:
         SELECT DISTINCT ON (norm.competence)
             norm.competence AS competence,
             norm.competence_normalisee AS norm_label,
-            num.original AS num_original,
-            num.entrée AS num_entree,
+            num.original,
+            type.original,
+            theme.original,
+            niv.original,
+            ia.original,
             num.cat AS num_cat,
-            theme.original AS theme_original,
+            type.cat AS type_cat,
             theme.cat AS theme_cat,
-            niv.original AS niv_original,
             niv.cat AS niv_cat,
-            ia.original AS ia_original,
             ia.cat AS ia_cat
         FROM read_csv('{HISTORY_NORMALIZED}') AS norm
-        LEFT JOIN read_csv('{HISTORY_NUM}') AS num
+        LEFT JOIN read_csv('{HISTORY_NUM}', header=true) AS num
             ON norm.competence_normalisee = num.original
-        LEFT JOIN read_csv('{HISTORY_THEME}') AS theme
-            ON num.original = theme.original
-        LEFT JOIN read_csv('{HISTORY_NIV}') AS niv
-            ON num.original = niv.original
-        LEFT JOIN read_csv('{HISTORY_IA}') AS ia
-            ON num.original = ia.original
+        LEFT JOIN read_csv('{HISTORY_TYPE}', header=true) AS type
+            ON norm.competence_normalisee = type.original
+        LEFT JOIN read_csv('{HISTORY_THEME}', header=true) AS theme
+            ON norm.competence_normalisee = theme.original
+        LEFT JOIN read_csv('{HISTORY_NIV}', header=true) AS niv
+            ON norm.competence_normalisee = niv.original
+        LEFT JOIN read_csv('{HISTORY_IA}', header=true) AS ia
+            ON norm.competence_normalisee = ia.original
     """)
 
     # Index pour les lookups par norm_label
