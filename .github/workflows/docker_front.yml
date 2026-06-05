@@ -26,6 +26,10 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME_BACK }}/analyse-oel_front
+          tags: |                                                      
+            type=sha
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
 
       - name: Se connecter à Docker Hub
         uses: docker/login-action@v3
