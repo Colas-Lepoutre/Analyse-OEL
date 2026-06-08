@@ -7,7 +7,6 @@ de langage avec un prompt système, et retourner les objets JSON parsés.
 
 import re
 import json
-import s3fs
 import os
 from typing import List
 import logging
@@ -25,18 +24,6 @@ BASE_URL = os.environ.get("BASE_URL", "")
 # Setup logging
 setup_logging()
 logger = logging.getLogger(__name__)
-
-
-def read_txt(path: str) -> str:
-    """Lit et retourne le contenu d'un fichier texte."""
-    fs = s3fs.S3FileSystem(
-        client_kwargs={"endpoint_url": "https://" + os.environ["AWS_S3_ENDPOINT"]}
-    )
-    with fs.open(path) as f:
-        return f.read().decode("utf-8")
-
-
-os.environ["API_KEY"] = read_txt(S3_PATH + "/LLM_API_KEY.txt").strip()
 
 def call(competences: List[str], system_prompt: str) -> List[dict]:
     """

@@ -213,10 +213,11 @@ Push code          Build image Docker          Mise à jour manifeste
 ### Secrets Kubernetes requis
 
 ```bash
-# Clé API LLM (backend)
-kubectl create secret generic api-jeton \
-  --from-literal=API_KEY='votre_clé_api_llm' \
-  -n user-username
+# Clé API LLM + Accès S3 (backend)
+kubectl create secret generic analyse-oel-secrets 
+  --from-literal=API_KEY="sk-..." \ 
+  --from-literal=AWS_ACCESS_KEY_ID="..." \
+  --from-literal=AWS_SECRET_ACCESS_KEY="..."
 ```
 
 ### URL publique
