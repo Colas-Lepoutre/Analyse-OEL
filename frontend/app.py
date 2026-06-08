@@ -230,7 +230,7 @@ def render_resultats(competences: list):
         if "Numérique" in sous_groupes:
             comps = sous_groupes["Numérique"]
 
-            st.markdown("""
+            if cat != "Erreur": st.markdown("""
             <div class="tags-container">
                 <strong>Numérique</strong>
             </div>
@@ -264,7 +264,7 @@ def render_resultats(competences: list):
         if "Non numérique" in sous_groupes:
             comps = sous_groupes["Non numérique"]
 
-            st.markdown("""
+            if cat != "Erreur": st.markdown("""
             <div class="tags-container">
                 <strong>Non numérique</strong>
             </div>
@@ -292,7 +292,6 @@ def normaliser_categorie(cat):
     
 
     cat = cat.lower()
-    
 
     mapping = {
         "soft skill": "Soft Skill",
@@ -362,7 +361,6 @@ if analyser:
             st.error("Impossible d'obtenir un résultat.")
         else:
             resultat_clean = nettoyer_competences(resultat)
-            print(resultat_clean)
             st.session_state["resultat"] = resultat_clean 
 
 # AFFICHAGE DES RESULTATS  ------------------------------------------------------

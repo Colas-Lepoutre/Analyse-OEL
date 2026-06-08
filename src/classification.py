@@ -105,7 +105,7 @@ def classify(skills: List[str]) -> List[Dict[str, Any]]:
         logger.warning("classify() appelé avec un type invalide : %s", type(skills))
         return []
 
-    logger.info("Classification de %d compétence(s)", len(skills))
+    logger.info(f"Classification de {len(skills)} compétence(s) : {skills}")
     outputs = classify_from_history(skills)
 
     remaining_skills = [o["label"] for o in outputs if o["categorie"] is None]
@@ -182,7 +182,7 @@ def classify_from_llm(skills: List[str]) -> List[Dict[str, Any]]:
 
     output: List[Dict[str, Any]] = []
     for item in types:
-        entree = item.get("original", "")
+        entree = item.get("entrée", "")
         categorie = item.get("cat", "")
         is_num = entree in num_entries
 
