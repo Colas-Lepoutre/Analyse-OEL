@@ -214,10 +214,12 @@ Push code          Build image Docker          Mise à jour manifeste
 
 ```bash
 # Clé API LLM + Accès S3 (backend)
-kubectl create secret generic analyse-oel-secrets 
-  --from-literal=API_KEY="sk-..." \ 
+kubectl delete secret analyse-oel-secrets --ignore-not-found
+kubectl create secret generic analyse-oel-secrets \
+  --from-literal=API_KEY="sk-..." \
   --from-literal=AWS_ACCESS_KEY_ID="..." \
-  --from-literal=AWS_SECRET_ACCESS_KEY="..."
+  --from-literal=AWS_SECRET_ACCESS_KEY="..." \
+  --from-literal=AWS_REGION="..."
 ```
 
 ### URL publique
